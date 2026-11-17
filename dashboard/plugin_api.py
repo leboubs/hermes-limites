@@ -241,28 +241,47 @@ def opencode_limits() -> dict[str, Any]:
 # --------------------------------------------------------------------------
 
 
-def _openrouter_today_usd() -> float | None:
-    """Somme estimée des appels OpenRouter depuis minuit (heure de Paris)."""
-    db = HERMES_HOME / "state.db"
-    if not db.exists():
-        return None
-    midnight = datetime.now(tz=PARIS).replace(hour=0, minute=0, second=0, microsecond=0)
-    try:
-        with sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=5) as conn:
-            row = conn.execute(
-                """
-                SELECT COALESCE(SUM(CASE WHEN actual_cost_usd > 0 THEN actual_cost_usd
-                                         ELSE estimated_cost_usd END), 0)
-                  FROM session_model_usage
-                 WHERE last_seen >= ?
-                   AND (billing_provider LIKE '%openrouter%'
-                        OR billing_base_url LIKE '%openrouter%')
-                """,
-                (midnight.timestamp(),),
-            ).fetchone()
-        return float(row[0]) if row else None
-    except sqlite3.Error:
-        return None
+def _profile_databases() -> list[tuple[str, Path]]:
+    """Toutes les bases Hermes : profil par défaut puis chaque profil nommé.
+
+    La dépense n'est pas centralisée : un sous-agent ou un worker tourne sous son
+    propre profil et écrit dans SA base. Lire seulement celle du profil courant
+    affichait 0 $ alors que Charlie avait dépensé la journée.
+    """
+    databases: list[tuple[str, Path]] = [("default", HERMES_HOME / "state.db")]
+    for db in sorted((HERMES_HOME / "profiles").glob("*/state.db")):
+        databases.append((db.parent.name, db))
+    return [(name, path) for name, path in databases if path.exists()]
+
+
+def _openrouter_today() -> tuple[float | None, dict[str, float]]:
+    """Dépense OpenRouter depuis minuit (Paris), total et par profil."""
+    midnight = datetime.now(tz=PARIS).replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+    per_profile: dict[str, float] = {}
+    seen_any = False
+    for name, db in _profile_databases():
+        try:
+            with sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=5) as conn:
+                row = conn.execute(
+                    """
+                    SELECT COALESCE(SUM(CASE WHEN actual_cost_usd > 0 THEN actual_cost_usd
+                                             ELSE estimated_cost_usd END), 0)
+                      FROM session_model_usage
+                     WHERE last_seen >= ?
+                       AND (billing_provider LIKE '%openrouter%'
+                            OR billing_base_url LIKE '%openrouter%')
+                    """,
+                    (midnight,),
+                ).fetchone()
+        except sqlite3.Error:
+            continue
+        seen_any = True
+        amount = float(row[0]) if row and row[0] else 0.0
+        if amount > 0:
+            per_profile[name] = round(amount, 4)
+    if not seen_any:
+        return None, {}
+    return round(sum(per_profile.values()), 4), per_profile
 
 
 def openrouter_limits() -> dict[str, Any]:
@@ -288,7 +307,7 @@ def openrouter_limits() -> dict[str, Any]:
         result["credits_used"] = credits.get("total_usage")
     except (urllib.error.URLError, TimeoutError, ValueError):
         pass
-    result["today_usd"] = _openrouter_today_usd()
+    result["today_usd"], result["today_by_profile"] = _openrouter_today()
     return result
 
 

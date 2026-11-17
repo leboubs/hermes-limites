@@ -168,6 +168,11 @@ function OpenRouterBlock({ source }) {
   const spent = Number.isFinite(source.window_spend) ? source.window_spend : null
   const ratio = limit && spent !== null ? Math.min(100, (spent / limit) * 100) : 0
   const reset = hoursLeft(source.resets_at)
+  const byProfile = source.today_by_profile || {}
+  const detail = Object.keys(byProfile)
+    .filter(name => Number(byProfile[name]) > 0)
+    .map(name => `${name} ${money(Number(byProfile[name]))}`)
+    .join(' · ')
   return div('lim-source', [
     div('lim-source-head', [
       span('lim-source-name', 'OpenRouter'),
@@ -184,9 +189,13 @@ function OpenRouterBlock({ source }) {
       reset ? div('lim-window-reset', `remise à zéro dans ${reset}`) : null
     ], 'key'),
     div('lim-or-row', [
-      span('lim-or-label', "Dépense du jour"),
+      span('lim-or-label', 'Dépense du jour'),
       span('lim-or-value', money(source.today_usd))
     ], 'today'),
+    detail ? div('lim-or-row lim-or-sub', [
+      span('lim-or-label', 'dont'),
+      span('lim-or-value', detail)
+    ], 'detail') : null,
     div('lim-or-row', [
       span('lim-or-label', 'Reste sur la clé'),
       span('lim-or-value', money(source.remaining))
@@ -258,6 +267,7 @@ const PANE_CSS = `
 .lim-window-reset{color:var(--ui-text-quaternary);font-size:11px}
 .lim-or-row{display:flex;justify-content:space-between;gap:8px;color:var(--ui-text-tertiary)}
 .lim-or-value{color:var(--ui-text-primary);font-variant-numeric:tabular-nums}
+.lim-or-sub{font-size:11px;color:var(--ui-text-quaternary)}
 .lim-error{color:var(--ui-red);font-size:11px;line-height:1.4}
 `
 
