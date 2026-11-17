@@ -1,0 +1,11 @@
+name: limites
+label: Limites
+kind: standalone
+version: 0.1.0
+author: Octave
+description: >
+  Backend du widget Desktop « limites » : lit les quotas d'abonnement Claude,
+  Codex et OpenCode Go ainsi que le plafond de clé et la dépense OpenRouter du
+  jour, puis les sert sur /api/plugins/limites/data. Aucun outil d'agent, aucun
+  crochet : la moitié visible est le plugin Desktop desktop-plugins/limites.
+requires_hermes: ">=0.22.0"
