@@ -26,7 +26,9 @@ n'apparaît pas tout de suite.
 ## Comment il lit les chiffres
 
 Tout est collecté côté serveur, dans le processus passerelle, par
-`dashboard/plugin_api.py` (route `/api/plugins/limites/data`, cache 45 s). Le
+`dashboard/limits_reader.py`, servi par `dashboard/plugin_api.py` (route
+`/api/plugins/limites/data`, cache 45 s). Le lecteur est rechargé à chaud quand
+son fichier change : une correction devient visible sans redémarrer la passerelle. Le
 panneau ne fait qu'afficher ce que le backend a répondu : aucun chiffre n'est
 calculé dans l'interface, et aucun jeton ne descend dans la page.
 

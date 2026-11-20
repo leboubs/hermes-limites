@@ -144,12 +144,14 @@ function SourceBlock({ id, source }) {
   }
   const windows = source.windows || []
   const rows = windows.map((win, index) => jsx(WindowRow, { window: win }, `${id}-${index}`))
+  const notes = Array.isArray(source.notes) ? source.notes : []
   return div('lim-source', [
     div('lim-source-head', [
       span('lim-source-name', source.label || id),
       source.plan ? span('lim-badge', String(source.plan)) : null
     ]),
-    ...rows
+    ...rows,
+    notes.length ? div('lim-note', String(notes[0])) : null
   ], id)
 }
 
@@ -269,6 +271,7 @@ const PANE_CSS = `
 .lim-or-value{color:var(--ui-text-primary);font-variant-numeric:tabular-nums}
 .lim-or-sub{font-size:11px;color:var(--ui-text-quaternary)}
 .lim-error{color:var(--ui-red);font-size:11px;line-height:1.4}
+.lim-note{color:var(--ui-text-quaternary);font-size:11px;line-height:1.35}
 `
 
 function injectStyle() {
